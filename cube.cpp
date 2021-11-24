@@ -4,8 +4,11 @@
 #include <math.h>
 #include <unistd.h>
 
+// Shortcuts so that I don't have to type std:: all the time
 using std::cout;
 using std::endl;
+
+// Note: std::max and std::min are left alone since math.h also comes with max and min functions
 
 struct vec3 {
     float x, y, z;
@@ -20,7 +23,7 @@ struct vec3 {
         z = zValue;
     }
 
-    // Overloaded + operator to add vec3s together
+    // Overloaded + operator to add vec3s to vec3
     vec3 operator+(const vec3 &vector) const {
         return vec3(x + vector.x, y + vector.y, z + vector.z);
     }
@@ -40,6 +43,7 @@ struct vec3 {
         return x * vector.x + y * vector.y + z * vector.z;
     }
 
+    // Transform the vector such that it has a length of 1 aka becomes a unit vector
     void makeUnit() {
         float scalar = 1 / sqrt(x * x + y * y + z * z);
 
@@ -81,7 +85,6 @@ const int char_buffer_size = width * height;
 
 char char_buffer[char_buffer_size];
 float z_buffer[char_buffer_size];
-// int L_buffer[char_buffer_size];
 
 /* Commonly used characeters, useful to have as constants */
 const char space = ' ';
@@ -89,15 +92,10 @@ const char newline = '\n';
 
 
 struct SquarePlane {
-    // float normal_x, normal_y, normal_z;
-    
     vec3 vertices[4] = {vertices[0], vertices[1], vertices[2], vertices[3]};
     vec3 normal;
 
-    // float maxZ, minZ;
-    // float maxX, minX;
-    // float maxY, minY;
-            
+    // Default constructor
     SquarePlane() { vertices[0] = vertices[1] = vertices[2] = vertices[3] = vec3(0,0,0); }
 
     // Four vertex contructor
@@ -106,33 +104,33 @@ struct SquarePlane {
         vertices[1] = B;
         vertices[2] = C;
         vertices[3] = D;
-        
-        // initX();
-        // initY();
-        // initZ();
 
         /* Calculating the unit normal vector for this plane */
         normal = ((vertices[1] - vertices[0]) % (vertices[2] - vertices[0]));
         normal.makeUnit();
-        
     }
 
+    // Directionally sensitive must be (clockwise/anti
     bool edgeFunction(const vec2 &a, const vec2 &b, const vec2 &c) const { 
         return ((c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x) > 0); 
     }    
 
+    // Render/rasterizer, takes the primitives(vertices) and draws the shapes as pixels on the screen(in this case writing to a char buffer)
     void render(const vec3 &light) const {
         // int L = 14 * (normal * light);
         int L = 5 * (normal * light);
 
+        /* Determining the bounding box for each plane */
         int maxX = (width / 2) * (1 + ceil(std::max({vertices[0].x, vertices[1].x, vertices[2].x, vertices[3].x}) / 2));
         int maxY = (height / 2) * (1 + ceil(std::max({vertices[0].y, vertices[1].y, vertices[2].y, vertices[3].y}) / 2));
         
         int minX = (width / 2) * (1 + floor(std::min({vertices[0].x, vertices[1].x, vertices[2].x, vertices[3].x}) / 2));
         int minY = (height / 2) * (1 + floor(std::min({vertices[0].y, vertices[1].y, vertices[2].y, vertices[3].y}) / 2));
 
+        /* Simplified calculation of the z(depth) of each plane for use in the z buffer, same for all points on the plane */
         float maxZ = std::max({vertices[0].z, vertices[1].z, vertices[2].z, vertices[3].z}) + 5;
         
+        /* Loop through every pixel in the bounding box */
         for (int py = minY; py < maxY + 1; py++) {
             for (int px = minX; px < maxX + 1; px++) {
                 vec2 v0 = vec2((width / 2) * (1 + vertices[0].x / 2), (height / 2) * (1 + vertices[0].y / 2));
@@ -142,6 +140,7 @@ struct SquarePlane {
 
                 vec2 p = vec2(px, py);
 
+                // Normally this is done on a triangle, I just did the edge function check one more time to use the same algorithm on 
                 bool inside = true; 
                 inside &= edgeFunction(v0, v1, p); 
                 inside &= edgeFunction(v1, v2, p); 
@@ -194,7 +193,8 @@ struct SquarePlane {
             }
         }
 
-        /*
+        /* Bresenham Line drawing algorithm, used initially, although it only renders the lines between vertices
+
         int x0 = (width / 2) * (1 + vertices[0].x / 2);
         int y0 = (height / 2) * (1 + vertices[0].y / 2);
 
@@ -236,6 +236,8 @@ struct SquarePlane {
         }*/
     }
 
+    // Relavant rotation transforms using rotation matrices, 
+    // pre-calculation of sin(theta) and cos(theta) offer slight optimizations
     void rotateX(float &theta) {
         float sin_theta = sin(theta);
         float cos_theta = cos(theta); 
@@ -269,59 +271,6 @@ struct SquarePlane {
         normal = vec3(normal.x * cos_theta - normal.y * sin_theta, normal.x * sin_theta + normal.y * cos_theta, normal.z);
 
     }
-
-// private:
-//     void initX() {
-//         float x[4] = { vertices[0].x, vertices[1].x, vertices[2].x, vertices[3].x };
-//
-//         // x[0] = vertices[0].x;
-//         // x[1] = vertices[1].x;
-//         // x[2] = vertices[2].x;
-//         // x[3] = vertices[3].x;
-//      
-//         // cout << x[0] <<endl;
-//
-//         maxX = x[0];
-//         minX = x[0];
-//
-//         for (int i = 1; i < 4; i++) {
-//             if (x[i] > maxX) {
-//                 maxX = x[i];
-//             } if (x[i] < minX) {
-//                 minX = x[i];
-//             }
-//         }
-//     }
-//
-//     void initY() {
-//         float y[4] = { vertices[0].y, vertices[1].y, vertices[2].y, vertices[3].y };
-//
-//         maxY = y[0];
-//         minY = y[0];
-//
-//         for (int i = 1; i < 4; i++) {
-//             if (y[i] > maxY) {
-//                 maxY = y[i];
-//             } if (y[i] < minY) {
-//                 minY = y[i];
-//             }
-//         }
-//     }
-//
-//     void initZ() {
-//         float z[4] = { vertices[0].z, vertices[1].z, vertices[2].z, vertices[3].z };
-//
-//         maxZ = z[0];
-//         minZ = z[0];
-//
-//         for (int i = 1; i < 4; i++) {
-//             if (z[i] > maxZ) {
-//                 maxZ = z[i];
-//             } if (z[i] < minZ) {
-//                 minZ = z[i];
-//             }
-//         }
-//     }
 };
 
 struct Cube {
@@ -343,7 +292,7 @@ struct Cube {
         }
         // cout << "\x1b[H";
 
-        // faces[5].render(light); // Doesn't work: 0, 4 ; Sometimes: 1, 3 ; Works: 2, 5
+        // faces[5].render(light); // Render individual faces this way
 
         for (int k = 0; k < char_buffer_size; k++) {
             cout << (k % width ? char_buffer[k] : newline);
@@ -351,6 +300,7 @@ struct Cube {
         // cout << endl;
     }
 
+    // Just forwards the rotation of the plane to the vertices, when the verticies rotate, the plane rotates
     void rotateX(float &theta) {
         for (int i = 0; i < 6; i++) {
             faces[i].rotateX(theta);
@@ -370,48 +320,51 @@ struct Cube {
     }
 };
 
+/* Deprecated function, moved to within the SquarePlane struct scope
+
 void renderSquarePlane(SquarePlane &plane) {
-    // float maxX = width / 2 + 30 * plane.maxX;
-    // float minX = width / 2 + 30 * plane.minX;
-    // float maxY = height / 2 + 30 * plane.maxY;
-    // float minY = height / 2 + 30 * plane.minY;
-    //
-    // int x0 = (width / 2) * (1 + plane.vertices[0].x / 2);
-    // int y0 = (height / 2) * (1+ plane.vertices[0].y / 2);
-//
-    // int x1;
-    // int y1;
-    //
-    // for (int i = 1; i < 5; i++) {
-    //     x1 = (width / 2) * (1 + plane.vertices[i < 4 ? i : 0].x / 2);
-    //     y1 = (height / 2) * (1+ plane.vertices[i < 4 ? i : 0].y / 2);
-//
-    //     // cout << x0 << ", " << y0 << ", " << x1 << ", " << y1 << endl;
-//
-    //     int dx =  abs (x1 - x0), sx = x0 < x1 ? 1 : -1;
-    //     int dy = -abs (y1 - y0), sy = y0 < y1 ? 1 : -1; 
-    //     int err = dx + dy, e2; /* error value e_xy */
-   //     
-    //     for (;;) {  /* loop */
-    //         if (height > y0 && y0 > 0 && x0 > 0 && width > x0) { char_buffer[x0 + 80 * y0] = '#'; }
-    //         if (x0 == x1 && y0 == y1) break;
-    //         e2 = 2 * err;
-    //         if (e2 >= dy) { err += dy; x0 += sx; } /* e_xy+e_x > 0 */
-    //         if (e2 <= dx) { err += dx; y0 += sy; } /* e_xy+e_y < 0 */
-    //     }
-//
-    //     x0 = x1;
-    //     y0 = y1;
-    // }
-//
-//
-    // for (int k = 0; k < char_buffer_size; k++) {
-    //         cout << (k % width ? char_buffer[k] : newline); 
-    //     }
-    // cout << endl;
-}
+    float maxX = width / 2 + 30 * plane.maxX;
+    float minX = width / 2 + 30 * plane.minX;
+    float maxY = height / 2 + 30 * plane.maxY;
+    float minY = height / 2 + 30 * plane.minY;
+    
+    int x0 = (width / 2) * (1 + plane.vertices[0].x / 2);
+    int y0 = (height / 2) * (1+ plane.vertices[0].y / 2);
+    
+    int x1;
+    int y1;
+    
+    for (int i = 1; i < 5; i++) {
+        x1 = (width / 2) * (1 + plane.vertices[i < 4 ? i : 0].x / 2);
+        y1 = (height / 2) * (1+ plane.vertices[i < 4 ? i : 0].y / 2);
+    
+        // cout << x0 << ", " << y0 << ", " << x1 << ", " << y1 << endl;
+
+        int dx =  abs (x1 - x0), sx = x0 < x1 ? 1 : -1;
+        int dy = -abs (y1 - y0), sy = y0 < y1 ? 1 : -1; 
+        int err = dx + dy, e2; // error value e_xy
+       
+        for (;;) {  // loop
+            if (height > y0 && y0 > 0 && x0 > 0 && width > x0) { char_buffer[x0 + 80 * y0] = '#'; }
+            if (x0 == x1 && y0 == y1) break;
+            e2 = 2 * err;
+            if (e2 >= dy) { err += dy; x0 += sx; } // e_xy+e_x > 0
+            if (e2 <= dx) { err += dx; y0 += sy; } // e_xy+e_y < 0
+        }
+
+        x0 = x1;
+        y0 = y1;
+    }
+
+
+    for (int k = 0; k < char_buffer_size; k++) {
+            cout << (k % width ? char_buffer[k] : newline); 
+        }
+    cout << endl;
+}*/
 
 void createCube() {
+    // Vertices A to H
     vec3 A = vec3(1.0, 1.0, 1.0);
     vec3 B = vec3(1.0, 1.0, -1.0);
     vec3 C = vec3(-1.0, 1.0, -1.0);
@@ -431,6 +384,8 @@ void createCube() {
     // vec3 F = vec3(30.0, -30.0, 30.0);
     // vec3 G = vec3(30.0, -30.0, -30.0);
     // vec3 H = vec3(-30.0, -30.0, -30.0);
+
+    /* The rasterizer is sensitive to the order of the vertices so some trial and error was conducter */
 
     // SquarePlane top = SquarePlane(A, B, C, D);
     SquarePlane top = SquarePlane(D, C, B, A); // Reversed
@@ -452,61 +407,37 @@ void createCube() {
 
     Cube cube = Cube(top, bottom, front, back, right, left);
 
-    // cout << cube.faces[1].minX << endl;
-    // cout << top.maxX << endl;
-
-    // cout << top.minX << endl;
-
-    // renderSquarePlane(top);
-
+    // Angle rotated per frame, in radians
     float a = 0.04f;
     float b = 0.02f;
 
     cout << "\x1b[2J";
 
     for (;;) {
-    // for (int i = 0; i < 1; i++) {
+    // for (int i = 0; i < 1; i++) { // for testing
         memset(char_buffer, space, char_buffer_size);
         memset(z_buffer, 0.0f, char_buffer_size * sizeof(float));
         // memset(L_buffer, 0, char_buffer_size * sizeof(int));
 
         cout << "\x1b[H";
         
-        // cube.render(vec3(0, 1 / sqrt(2), -1 / sqrt(2)));
-        cube.render(vec3(0,0,-1));
+        // Control the light source's location
+        cube.render(vec3(0, 1 / sqrt(2), -1 / sqrt(2)));
+        // cube.render(vec3(0,0,-1));
+
+        // Control the rotation of the cube
         cube.rotateX(a);
         cube.rotateZ(b);
 
-        // cout << top.normal << endl;
-
-        // renderSquarePlane(front);
-        // renderSquarePlane(top);
-        // front.rotateX(a);
-        // front.rotateZ(b);
-
-        // top.rotateX(a);
-        // top.rotateZ(b);
-
+        // Control the speed of the rotation
         // usleep(5000);
-
         usleep(50000);
         // usleep(100000);
         // usleep(300000);
     }
-    
 }
 
 int main() {
-
-    // std::cout << "Test";
-
-    // std::cout << "\033[2J";
-
-
-    // float max, min = Cube();
-
-    // cout << max << endl << min << endl;
-
     createCube();
     
     // cout << a << endl;
